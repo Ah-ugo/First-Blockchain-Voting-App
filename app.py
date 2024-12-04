@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form
 from pymongo import MongoClient
 from models import *
 from auth import *
@@ -8,6 +8,7 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from cloudinary_utils import *
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -38,26 +39,45 @@ def admin_required(token: str = Depends()):
 # ===================== USER FEATURES =====================
 @app.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+
     user = db.users.find_one({"username": form_data.username})
+
+
     if not user or not verify_password(form_data.password, user["password"]):
         raise HTTPException(status_code=400, detail="Invalid username or password")
-    token = create_access_token({"sub": user["username"]}, os.getenv("SECRET_KEY"), os.getenv("ALGORITHM"))
-    return {"access_token": token, "token_type": "bearer"}
+
+
+    token = create_access_token(
+        {"sub": user["username"]},
+        os.getenv("SECRET_KEY"),
+        os.getenv("ALGORITHM")
+    )
+
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "profile_picture_url": user.get("profile_picture_url")
+    }
 
 
 @app.post("/register/")
-def register(user: UserRegister):
-    if db.users.find_one({"username": user.username}):
+def register(username: str = Form(...), password: str = Form(...), profile_picture: UploadFile = File(...)):
+    if db.users.find_one({"username": username}):
         raise HTTPException(status_code=400, detail="User already exists")
+
+    # Upload profile picture to Cloudinary
+    profile_picture_url = upload_image_to_cloudinary(profile_picture.file, "Shops")
 
     voter_address, private_key = generate_wallet()
     db.users.insert_one({
-        "username": user.username,
-        "password": hash_password(user.password),
+        "username": username,
+        "password": hash_password(password),
         "voter_address": voter_address,
-        "private_key": private_key
+        "private_key": private_key,
+        "profile_picture_url": profile_picture_url
     })
-    return {"message": "Registration successful", "voter_address": voter_address}
+    return {"message": "Registration successful", "voter_address": voter_address, "profile_picture_url": profile_picture_url}
 
 
 @app.post("/login/")
@@ -65,8 +85,14 @@ def login(user: UserLogin):
     db_user = db.users.find_one({"username": user.username})
     if not db_user or not verify_password(user.password, db_user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
     token = create_access_token({"sub": user.username}, os.getenv("SECRET_KEY"), os.getenv("ALGORITHM"))
-    return {"access_token": token, "voter_address": db_user["voter_address"]}
+    return {
+        "access_token": token,
+        "voter_address": db_user["voter_address"],
+        "profile_picture_url": db_user.get("profile_picture_url")
+    }
+
 
 
 # @app.get("/polls/")
@@ -77,7 +103,18 @@ def login(user: UserLogin):
 @app.get("/polls/")
 def get_polls():
     polls = db.polls.find()
-    serialized_polls = [serialize_document(poll) for poll in polls]
+    serialized_polls = []
+
+    for poll in polls:
+        # Get total votes for this poll
+        total_votes = db.votes.count_documents({"poll_id": str(poll["_id"])})
+
+        # Serialize the poll document
+        serialized_poll = serialize_document(poll)
+        serialized_poll["total_votes"] = total_votes
+
+        serialized_polls.append(serialized_poll)
+
     return serialized_polls
 
 
@@ -140,14 +177,22 @@ def voting_history(token: str = Depends(get_current_token)):
 # ===================== ADMIN FEATURES =====================
 
 @app.post("/admin/polls/")
-def add_poll(poll: Poll):
+def add_poll(title: str = Form(...),
+    description: Optional[str] = Form(None),
+    is_active: bool = Form(...),
+    poll_image: UploadFile = File(...)):
+
+    poll_image_url = upload_image_to_cloudinary(poll_image.file, "Shops")
+
     db.polls.insert_one({
-        "title": poll.title,
-        "description": poll.description,
-        "is_active": poll.is_active,
-        "candidates": []
+        "title": title,
+        "description": description,
+        "is_active": is_active,
+        "candidates": [],
+        "poll_image_url": poll_image_url
     })
-    return {"message": "Poll created successfully"}
+    return {"message": "Poll created successfully", "poll_image_url": poll_image_url}
+
 
 
 @app.delete("/admin/polls/{poll_id}/")
@@ -168,15 +213,24 @@ def update_poll_status(poll_id: str, is_active: bool):
 
 
 @app.post("/admin/polls/{poll_id}/candidates/")
-def add_candidate_to_poll(poll_id: str, candidate: Candidate):
+def add_candidate_to_poll(poll_id: str, name: str = Form(...), party: str = Form(...), candidate_image: UploadFile = File(...)):
+    # Upload candidate image to Cloudinary
+    candidate_image_url = upload_image_to_cloudinary(candidate_image.file, "Shops")
+
     candidate_id = str(ObjectId())
     result = db.polls.update_one(
         {"_id": ObjectId(poll_id)},
-        {"$push": {"candidates": {"id": candidate_id, "name": candidate.name, "party": candidate.party}}}
+        {"$push": {"candidates": {
+            "id": candidate_id,
+            "name": name,
+            "party": party,
+            "image_url": candidate_image_url
+        }}}
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Poll not found")
-    return {"message": "Candidate added successfully", "candidate_id": candidate_id}
+    return {"message": "Candidate added successfully", "candidate_id": candidate_id, "image_url": candidate_image_url}
+
 
 
 @app.delete("/admin/polls/{poll_id}/candidates/{candidate_id}/")
