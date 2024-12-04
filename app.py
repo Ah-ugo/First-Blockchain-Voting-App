@@ -118,6 +118,24 @@ def get_polls():
     return serialized_polls
 
 
+@app.get("/polls/{poll_id}/")
+def get_poll_by_id(poll_id: str):
+
+    # Fetch the poll from the database
+    poll = db.polls.find_one({"_id": ObjectId(poll_id)})
+    if not poll:
+        raise HTTPException(status_code=404, detail="Poll not found")
+
+    # Count total votes for the poll
+    total_votes = db.votes.count_documents({"poll_id": poll_id})
+
+    # Serialize and return the poll details
+    serialized_poll = serialize_document(poll)
+    serialized_poll["total_votes"] = total_votes
+
+    return serialized_poll
+
+
 @app.get("/polls/{poll_id}/candidates/")
 def view_candidates(poll_id: str):
     poll = db.polls.find_one({"_id": ObjectId(poll_id)})
