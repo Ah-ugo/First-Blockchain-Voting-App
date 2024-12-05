@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="60991b6d-a761-46f0-aea8-87f06330778f" name="Changes" comment="second commit">
+    <list default="true" id="60991b6d-a761-46f0-aea8-87f06330778f" name="Changes" comment="Implemented Websockets">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
@@ -91,12 +91,21 @@
       <option name="project" value="LOCAL" />
       <updated>1733337357212</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Implemented Websockets">
+      <option name="closed" value="true" />
+      <created>1733361557385</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1733361557385</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="first commit" />
     <MESSAGE value="second commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="second commit" />
+    <MESSAGE value="Implemented Websockets" />
+    <option name="LAST_COMMIT_MESSAGE" value="Implemented Websockets" />
   </component>
 </project>

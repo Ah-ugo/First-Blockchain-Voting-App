@@ -9,12 +9,26 @@ from typing import Optional
 from dotenv import load_dotenv
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from cloudinary_utils import *
+from fastapi.middleware.cors import CORSMiddleware
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(
+    title="Blockchain Voting",
+    description="Blockchain voting API documentation developed by Ahuekwe Prince Ugochukwu.",
+    version="1.0.0"
+)
+
+# CORS middleware configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # MongoDB setup
 client = MongoClient(os.getenv("MONGO_URL"))
@@ -43,14 +57,17 @@ def admin_required(token: str = Depends()):
 async def websocket_poll_update(websocket: WebSocket, poll_id: str):
     await websocket.accept()
     active_connections.append(websocket)
-
     try:
+        # Wait for a message from the client (if needed)
         while True:
-            # Wait for a message from the client (if needed)
-            data = await websocket.receive_text()
-
-            # You could send a message to the client with data (optional)
-            await websocket.send_text(f"Poll {poll_id} update received: {data}")
+            # Send updated poll data to the connected client
+            poll = db.polls.find_one({"_id": ObjectId(poll_id)})
+            if not poll:
+                raise WebSocketDisconnect
+            total_votes = db.votes.count_documents({"poll_id": poll_id})
+            serialized_poll = serialize_document(poll)
+            serialized_poll["total_votes"] = total_votes
+            await websocket.send_json(serialized_poll)
 
     except WebSocketDisconnect:
         active_connections.remove(websocket)
@@ -329,3 +346,15 @@ def get_poll_votes(poll_id: str):
         vote_counts[vote["candidate_id"]] += 1
 
     return {"poll": poll["title"], "votes": vote_counts}
+
+
+async def update_poll_data(poll_id: str):
+    poll = db.polls.find_one({"_id": ObjectId(poll_id)})
+    if not poll:
+        return
+    total_votes = db.votes.count_documents({"poll_id": poll_id})
+    serialized_poll = serialize_document(poll)
+    serialized_poll["total_votes"] = total_votes
+
+    for connection in active_connections:
+        await connection.send_json(serialized_poll)
