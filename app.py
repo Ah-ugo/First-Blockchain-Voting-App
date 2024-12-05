@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Form, WebSocket, WebSocketDisconnect
 from pymongo import MongoClient
 from models import *
 from auth import *
@@ -19,6 +19,7 @@ app = FastAPI()
 # MongoDB setup
 client = MongoClient(os.getenv("MONGO_URL"))
 db = client["voting_system"]
+active_connections = []
 
 
 def serialize_document(doc):
@@ -37,6 +38,25 @@ def admin_required(token: str = Depends()):
 
 
 # ===================== USER FEATURES =====================
+
+@app.websocket("/ws/polls/{poll_id}")
+async def websocket_poll_update(websocket: WebSocket, poll_id: str):
+    await websocket.accept()
+    active_connections.append(websocket)
+
+    try:
+        while True:
+            # Wait for a message from the client (if needed)
+            data = await websocket.receive_text()
+
+            # You could send a message to the client with data (optional)
+            await websocket.send_text(f"Poll {poll_id} update received: {data}")
+
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+        print(f"Client disconnected from poll {poll_id}")
+
+
 @app.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
 
@@ -144,8 +164,37 @@ def view_candidates(poll_id: str):
     return {"poll": poll["title"], "candidates": poll["candidates"]}
 
 
+# @app.post("/cast_vote/")
+# def cast_vote(
+#         vote: Vote,
+#         token: str = Depends(get_current_token)
+# ):
+#     username = decode_access_token(token, os.getenv("SECRET_KEY"), os.getenv("ALGORITHM"))["sub"]
+#     db_user = db.users.find_one({"username": username})
+#     if not db_user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#
+#     poll = db.polls.find_one({"_id": ObjectId(vote.poll_id)})
+#     if not poll or not poll.get("is_active", True):
+#         raise HTTPException(status_code=404, detail="Poll not active or not found")
+#
+#     candidate = next((c for c in poll["candidates"] if c["id"] == vote.candidate_id), None)
+#     if not candidate:
+#         raise HTTPException(status_code=404, detail="Candidate not found")
+#
+#     if db.votes.find_one({"username": username, "poll_id": vote.poll_id}):
+#         raise HTTPException(status_code=400, detail="User has already voted in this poll")
+#
+#     db.votes.insert_one({
+#         "username": username,
+#         "poll_id": vote.poll_id,
+#         "candidate_id": vote.candidate_id
+#     })
+#     return {"message": "Vote cast successfully"}
+
+
 @app.post("/cast_vote/")
-def cast_vote(
+async def cast_vote(
         vote: Vote,
         token: str = Depends(get_current_token)
 ):
@@ -170,7 +219,13 @@ def cast_vote(
         "poll_id": vote.poll_id,
         "candidate_id": vote.candidate_id
     })
+
+    # Emit update to all connected clients
+    for connection in active_connections:
+        await connection.send_text(f"Poll {vote.poll_id} updated with new vote for {candidate['name']}")
+
     return {"message": "Vote cast successfully"}
+
 
 
 # @app.get("/voting_history/")
