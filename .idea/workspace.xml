@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="60991b6d-a761-46f0-aea8-87f06330778f" name="Changes" comment="Fixed websocket response">
-      <change afterPath="$PROJECT_DIR$/vercel.json" afterDir="false" />
+    <list default="true" id="60991b6d-a761-46f0-aea8-87f06330778f" name="Changes" comment="Implemented vercel.json">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/vercel.json" beforeDir="false" afterPath="$PROJECT_DIR$/vercel.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +107,23 @@
       <option name="project" value="LOCAL" />
       <updated>1733365699326</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Implemented vercel.json">
+      <option name="closed" value="true" />
+      <created>1733392785736</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1733392785736</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Implemented vercel.json">
+      <option name="closed" value="true" />
+      <created>1733392911505</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1733392911505</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -115,6 +131,7 @@
     <MESSAGE value="second commit" />
     <MESSAGE value="Implemented Websockets" />
     <MESSAGE value="Fixed websocket response" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed websocket response" />
+    <MESSAGE value="Implemented vercel.json" />
+    <option name="LAST_COMMIT_MESSAGE" value="Implemented vercel.json" />
   </component>
 </project>
